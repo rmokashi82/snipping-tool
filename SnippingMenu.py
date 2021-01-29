@@ -5,7 +5,7 @@ from PyQt5.QtWidgets import QAction, QMainWindow, QApplication, QPushButton, QMe
 from PyQt5.QtGui import QPixmap, QImage, QPainter, QPen
 
 import SnippingTool
-
+import pytessaract
 
 class Menu(QMainWindow):
     COLORS = ['Red', 'Black', 'Blue', 'Green', 'Yellow']
@@ -50,7 +50,13 @@ class Menu(QMainWindow):
         save_action.setShortcut('Ctrl+S')
         save_action.setStatusTip('Save')
         save_action.triggered.connect(self.save_file)
-
+        
+       # Extract
+        extract_action = QAction('Extract', self)
+        extract_action.setShortcut('Ctrl+E')
+        extract_action.setStatusTip('Extract')
+        extract_action.triggered.connect(self.extract_text)
+        
         # Exit
         exit_window = QAction('Exit', self)
         exit_window.setShortcut('Ctrl+Q')
@@ -60,6 +66,7 @@ class Menu(QMainWindow):
         self.toolbar = self.addToolBar('Exit')
         self.toolbar.addAction(new_snip_action)
         self.toolbar.addAction(save_action)
+        self.toolbar.addAction(extract_action)        
         self.toolbar.addWidget(brush_color_button)
         self.toolbar.addWidget(brush_size_button)
         self.toolbar.addAction(exit_window)
@@ -70,6 +77,7 @@ class Menu(QMainWindow):
         # From the second initialization, both arguments will be valid
         if numpy_image is not None and snip_number is not None:
             self.image = self.convert_numpy_img_to_qpixmap(numpy_image)
+            self.n_image = numpy_image 
             self.change_and_set_title("Snip #{0}".format(snip_number))
         else:
             self.image = QPixmap("background.PNG")
@@ -97,7 +105,24 @@ class Menu(QMainWindow):
             self.image.save(file_path)
             self.change_and_set_title(basename(file_path))
             print(self.title, 'Saved')
-
+            
+    def extract_text_from_image(self, image):
+        #Install pytesseract and provide the path where the tesseract.exe resides.
+        pytesseract.pytesseract.tesseract_cmd = 'C:/Program Files (x86)/Tesseract-OCR/tesseract.exe'
+        custom_config = r'-c tessedit_char_whitelist=abcdefghijklmnopqrstuvwxyz0123456789 --psm 6'
+        return(pytesseract.image_to_string(image, config=custom_config))  
+    
+    def extract_text(self):
+        extracted_text = self.extract_text_from_image(self.n_image)
+        file_path, name = QFileDialog.getSaveFileName(self, "Save file", self.title, "Text file (*.txt)")
+        print(name)
+        if file_path:
+           save_text = open(file_path, 'w')
+           save_text.write(extracted_text)
+           save_text.close()
+           self.change_and_set_title(basename(file_path))
+           print(self.title, 'Saved')
+        
     def change_and_set_title(self, new_title):
         self.title = new_title
         self.setWindowTitle(self.title)
